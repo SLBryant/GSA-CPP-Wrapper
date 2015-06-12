@@ -1,0 +1,24 @@
+{
+  "name": "gsa-cpp-wrapper",
+  "version": "0.1.0",
+  "description": "Wrap responses from GSA PBS CPP Service, Expose API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cbfranklin/gsa-cpp-wrapper.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cbfranklin/gsa-cpp-wrapper/issues"
+  },
+  "homepage": "https://github.com/cbfranklin/gsa-cpp-wrapper#readme",
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "express": "^4.12.4",
+    "request": "^2.55.0"
+  }
+}
