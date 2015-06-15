@@ -75,6 +75,7 @@ function getAwardDetails(i,res) {
             }
             console.log('thru')
             getAwardDetails(i + 1,res)
+            
         })
     } else {
         //GET YCA
