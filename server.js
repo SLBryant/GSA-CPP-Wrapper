@@ -9,11 +9,8 @@ var cpp = [];
 
 app.use('/', express.static(__dirname + '/html'));
 
-console.log('hello world')
-
 app.get('/search', function(req, res) {
-	cpp = [];
-    console.log('/search')
+    cpp = [];
     var cppQuery = {
         'originAPCode': req.query.originAPCode,
         'originCity': req.query.originCity,
@@ -26,11 +23,9 @@ app.get('/search', function(req, res) {
         form: cppQuery,
     }, function(error, response, html) {
         if (!error && response.statusCode == 200) {
-            console.log('post success')
             var $ = cheerio.load(html);
             var rootURL = 'http://cpsearch.fas.gsa.gov/cpsearch/';
             $('.displaytable tbody tr').each(function() {
-                console.log('tr each')
                 var infoURLS = {};
                 infoURLS.awardDetails = rootURL + $(this).find('td:first-child a').attr('href');
                 infoURLS.itemID = infoURLS.awardDetails.split('=');
@@ -46,51 +41,54 @@ app.get('/search', function(req, res) {
                 }
                 cpp.push(cppEntry);
             });
-            //res.json(cpp)
 
-            getAwardDetails(0,res);
-            //collects data from one of the infoURLS
+            getAwardDetails(0, res);
         }
     });
 });
 
-function getAwardDetails(i,res) {
+function getAwardDetails(i, res) {
 
     if (i < cpp.length) {
         request(cpp[i]['info_urls']['awardDetails'], function(error, response, html) {
             if (!error && response.statusCode == 200) {
                 var $ = cheerio.load(html);
-                console.log('success')
                 $('.fareTable tr:not(:first-child)').each(function() {
                     var label = $(this).find('td:first-child').text().replace(/\r?\n|\r|\t|/g, '').replace(/\'/g, '').replace(/:/g, '').replace(/[ \t]+$/, '').replace(/ /g, '_').toLowerCase();
                     var value = $(this).find('td:last-child').text().replace(/\r?\n|\r|\t/g, '').replace(/\'/g, '').replace(/\$|\.00/g, '').replace(/[ \t]+$/, '');
                     if (value === '0') value = null;
                     cpp[i][label] = value;
                 });
-                /*console.log(_.findWhere(cpp, {
-                        item_id: infoURLS[i]['item_id']
-                    }))*/
-                //cppResponses[i]['award_details'] = awardDetails
-                //getAwardDetails(i + 1)
             }
-            console.log('thru')
-            getAwardDetails(i + 1,res)
-            
+            getAwardDetails(i + 1, res)
+
         })
     } else {
-        //GET YCA
-        //GET CA
-        //IF CB GET CB
-        //REMOVE INFO_URLS:
-        for (i in cpp) {
-            delete cpp[i]['info_urls'];
-        }
-        //AND FINALLY:
-        console.log('finished')
-        res.json(cpp)
+        getLuggageRates(0, res)
     }
 }
 
-// 
+function getLuggageRates(i, res) {
+    if (i < cpp.length) {
+        request(cpp[i]['info_urls']['VCA'], function(error, response, html) {
+            if (!error && response.statusCode == 200) {
+                var $ = cheerio.load(html);
+                cpp[i]['baggage'] = {}
+                var firstBag = $('.fareTable tr:nth-child(9) .row-info-text').text().replace(/\r?\n|\r|\t/g, '').replace(/\'/g, '').replace(/\$|\.00/g, '').replace(/[ \t]+$/, '');
+                var secondBag = $('.fareTable tr:nth-child(9) .row-info-text').text().replace(/\r?\n|\r|\t/g, '').replace(/\'/g, '').replace(/\$|\.00/g, '').replace(/[ \t]+$/, '');
+                if (firstBag === '0') firstBag = null;
+                if (secondBag === '0') secondBag = null;
+                cpp[i]['baggage']['first_checked_bag'] = firstBag;
+                cpp[i]['baggage']['second_checked_bag'] = secondBag;
+            }
+            getLuggageRates(i + 1, res);
 
+        })
+    } else {
+        for (i in cpp) {
+            delete cpp[i]['info_urls'];
+        }
+        res.json(cpp)
+    }
+}
 app.listen(process.env.PORT || 3000);
