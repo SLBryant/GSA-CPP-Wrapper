@@ -48,13 +48,13 @@ app.get('/search', function(req, res) {
             });
             //res.json(cpp)
 
-            getAwardDetails(0);
+            getAwardDetails(0,res);
             //collects data from one of the infoURLS
         }
     });
 });
 
-function getAwardDetails(i) {
+function getAwardDetails(i,res) {
 
     if (i < cpp.length) {
         request(cpp[i]['info_urls']['awardDetails'], function(error, response, html) {
@@ -74,7 +74,7 @@ function getAwardDetails(i) {
                 //getAwardDetails(i + 1)
             }
             console.log('thru')
-            getAwardDetails(i + 1)
+            getAwardDetails(i + 1,res)
         })
     } else {
         //GET YCA
