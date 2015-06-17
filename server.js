@@ -6,18 +6,25 @@ var _ = require('underscore');
 var app = express();
 
 var cpp = [];
+var pd = [];
+var sp = {
+    'html':null,
+};
+var fullResponse = {};
+var cppQuery;
 
 app.use('/', express.static(__dirname + '/html'));
 
 app.get('/search', function(req, res) {
     cpp = [];
-    var cppQuery = {
+    cppQuery = {
         'originAPCode': req.query.originAPCode,
         'originCity': req.query.originCity,
         'destAPCode': req.query.destAPCode,
         'destCity': req.query.destCity,
         'fiscalYear': "Search+FY+15"
     };
+    console.log('getCPP')
     request.post({
         url: 'http://cpsearch.fas.gsa.gov/cpsearch/mainList.do',
         form: cppQuery,
@@ -48,7 +55,7 @@ app.get('/search', function(req, res) {
 });
 
 function getAwardDetails(i, res) {
-
+    console.log('getAwardDetails')
     if (i < cpp.length) {
         request(cpp[i]['info_urls']['awardDetails'], function(error, response, html) {
             if (!error && response.statusCode == 200) {
@@ -69,6 +76,7 @@ function getAwardDetails(i, res) {
 }
 
 function getLuggageRates(i, res) {
+    console.log('getLuggage')
     if (i < cpp.length) {
         request(cpp[i]['info_urls']['VCA'], function(error, response, html) {
             if (!error && response.statusCode == 200) {
@@ -88,7 +96,52 @@ function getLuggageRates(i, res) {
         for (i in cpp) {
             delete cpp[i]['info_urls'];
         }
-        res.json(cpp)
+        fullResponse.cityPairs = cpp;
+        getPerDiemRates(cppQuery.originAPCode,res)
     }
 }
+
+function getPerDiemRates(destination,res) {
+    console.log('googleGeocache',destination)
+    var req = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + destination;
+    request(req, function(error, response, data) {
+        if (!error && response.statusCode == 200) {
+            data = JSON.parse(data)
+            var addressComponents = data.results[0].address_components;
+            for (i in addressComponents) {
+                if (addressComponents[i].types.indexOf('postal_code') > -1) {
+                    var zip = addressComponents[i].short_name;
+                    console.log('getPerDiemRates',zip)
+                    request('http://m.gsa.gov/api/rs/perdiem/zip/' + zip + '/year/2015/', function(error, response, json) {
+                        if (!error && response.statusCode == 200) {
+                            pd = JSON.parse(json).rates[0].rate;
+                            fullResponse.perDiem = pd;
+                            //res.json(fullResponse);
+                            for (i in addressComponents) {
+                                if (addressComponents[i].types.indexOf('administrative_area_level_1') > -1) {
+                                    var state = addressComponents[i].long_name.toLowerCase();
+                                    console.log('getSmartPay',state)
+                                    request('https://smartpay.gsa.gov/program-coordinators/tax-information/' + state, function(error, response, html) {
+                                        console.log(html)
+                                        var $ = cheerio.load(html);
+                                        $('img').remove();
+                                        var smartPay = $('body').html();
+                                        console.log(smartPay)
+                                        sp.html = smartPay;
+                                        fullResponse.smartPay = sp;
+                                        res.json(fullResponse);
+                                    })
+                                }
+                            }
+                            
+                        }
+                    })
+
+                }
+            }
+        }
+
+    })
+}
+
 app.listen(process.env.PORT || 3000);
